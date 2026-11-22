@@ -1,0 +1,8 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="veincontrol"
+version="1.0.0"
+displayName="Vein Control"
+description="HUD toggle + configurable vein mining"
