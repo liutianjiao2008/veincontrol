@@ -6,6 +6,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.Containers;
+import net.minecraft.world.item.ItemStack;
+import java.util.List;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -44,7 +48,19 @@ public class VeinHandler {
                         BlockState ns = level.getBlockState(n);
                         if (ns.getBlock() != originState.getBlock()) continue;
                         if (n.equals(origin)) continue;
-                        level.destroyBlock(n, true, event.getPlayer());
+                        if (Config.DROPS_AT_PLAYER.get()) {
+                            List<ItemStack> drops = Block.getDrops(ns, level, n, level.getBlockEntity(n),
+                                    event.getPlayer(), event.getPlayer().getMainHandItem());
+                            level.removeBlock(n, false);
+                            BlockPos pp = event.getPlayer().blockPosition();
+                            for (ItemStack st : drops) {
+                                double ox = (level.random.nextDouble() - 0.5) * 0.8;
+                                double oz = (level.random.nextDouble() - 0.5) * 0.8;
+                                Containers.dropItemStack(level, pp.getX() + 0.5 + ox, pp.getY() + 0.6, pp.getZ() + 0.5 + oz, st);
+                            }
+                        } else {
+                            level.destroyBlock(n, true, event.getPlayer());
+                        }
                         queue.add(n);
                         broken++;
                         if (broken >= limit) break;
