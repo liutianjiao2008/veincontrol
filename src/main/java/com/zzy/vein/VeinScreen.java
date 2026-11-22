@@ -46,10 +46,40 @@ public class VeinScreen extends Screen {
             b -> { ClientEvents.addLookedAtBlock(); rebuild(); }
         ).bounds(cx + 95, this.height - 56, 90, 20).build());
 
+        int sy = this.height - 82;
+        this.addRenderableWidget(Button.builder(
+            Component.literal("宽 " + Config.WIDTH.get()),
+            b -> { Config.WIDTH.set(nextSize(Config.WIDTH.get())); Config.SPEC.save(); b.setMessage(Component.literal("宽 " + Config.WIDTH.get())); }
+        ).bounds(cx - 155, sy, 70, 20).build());
+
+        this.addRenderableWidget(Button.builder(
+            Component.literal("高 " + Config.HEIGHT.get()),
+            b -> { Config.HEIGHT.set(nextSize(Config.HEIGHT.get())); Config.SPEC.save(); b.setMessage(Component.literal("高 " + Config.HEIGHT.get())); }
+        ).bounds(cx - 80, sy, 70, 20).build());
+
+        this.addRenderableWidget(Button.builder(
+            Component.literal("深 " + Config.DEPTH.get()),
+            b -> { Config.DEPTH.set(nextSize(Config.DEPTH.get())); Config.SPEC.save(); b.setMessage(Component.literal("深 " + Config.DEPTH.get())); }
+        ).bounds(cx - 5, sy, 70, 20).build());
+
+        this.addRenderableWidget(Button.builder(
+            Component.literal("全部设为 1（纯连通）"),
+            b -> { Config.WIDTH.set(1); Config.HEIGHT.set(1); Config.DEPTH.set(1); Config.SPEC.save(); rebuild(); }
+        ).bounds(cx + 70, sy, 120, 20).build());
+
         this.addRenderableWidget(Button.builder(
             Component.literal("关闭"),
             b -> this.onClose()
         ).bounds(cx - 50, this.height - 30, 100, 20).build());
+    }
+
+    private static final int[] SIZES = {1, 3, 5, 7, 9, 15, 31};
+
+    private static int nextSize(int cur) {
+        for (int i = 0; i < SIZES.length; i++) {
+            if (SIZES[i] == cur) return SIZES[(i + 1) % SIZES.length];
+        }
+        return 3;
     }
 
     public static String displayName(String id) {
@@ -103,7 +133,10 @@ public class VeinScreen extends Screen {
         List<? extends String> list = Config.BLOCKS.get();
         int totalPage = Math.max(1, (list.size() + PER_PAGE - 1) / PER_PAGE);
         gfx.drawString(this.font, "共 " + list.size() + " 项 / 第 " + (page + 1) + " 页（共 " + totalPage + " 页）", this.width / 2 - 150, 32, 0xAAAAAA, false);
-        gfx.drawString(this.font, "点击列表中的条目即可删除", this.width / 2 + 20, 32, 0x888888, false);
+        String shape = (Config.WIDTH.get() > 1 || Config.HEIGHT.get() > 1 || Config.DEPTH.get() > 1)
+                ? "形状模式 " + Config.WIDTH.get() + "x" + Config.HEIGHT.get() + "x" + Config.DEPTH.get()
+                : "连通模式（不限形状）";
+        gfx.drawString(this.font, shape, this.width / 2 + 20, 32, 0x66CCFF, false);
 
         int x = this.width / 2 - 150;
         int y0 = 50;
