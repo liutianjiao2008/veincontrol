@@ -9,6 +9,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
+import org.lwjgl.glfw.GLFW;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -56,6 +57,19 @@ public class ClientEvents {
 
     @Mod.EventBusSubscriber(modid = VeinControl.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
     public static class Mouse {
+
+        @SubscribeEvent
+        public static void onKey(InputEvent.Key event) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null || mc.screen != null) return;
+            if (event.getKey() == GLFW.GLFW_KEY_LEFT_ALT || event.getKey() == GLFW.GLFW_KEY_RIGHT_ALT) {
+                if (event.getAction() == GLFW.GLFW_PRESS) {
+                    mc.mouseHandler.releaseMouse();
+                } else if (event.getAction() == GLFW.GLFW_RELEASE) {
+                    mc.mouseHandler.grabMouse();
+                }
+            }
+        }
         @SubscribeEvent
         public static void onClick(InputEvent.MouseButton.Post event) {
             Minecraft mc = Minecraft.getInstance();
