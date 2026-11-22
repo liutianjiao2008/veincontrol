@@ -62,16 +62,18 @@ public class ClientEvents {
         public static void onKey(InputEvent.Key event) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null || mc.screen != null) return;
-            if (event.getKey() == GLFW.GLFW_KEY_LEFT_ALT || event.getKey() == GLFW.GLFW_KEY_RIGHT_ALT) {
-                if (event.getAction() == GLFW.GLFW_PRESS) {
+            // 只响应按下（toggle），不响应松开，避免点按钮时被立刻锁回去
+            if (event.getAction() != GLFW.GLFW_PRESS) return;
+            if (event.getKey() == GLFW.GLFW_KEY_LEFT_ALT) {
+                if (mc.mouseHandler.isMouseGrabbed()) {
                     mc.mouseHandler.releaseMouse();
-                } else if (event.getAction() == GLFW.GLFW_RELEASE) {
+                } else {
                     mc.mouseHandler.grabMouse();
                 }
             }
         }
         @SubscribeEvent
-        public static void onClick(InputEvent.MouseButton.Post event) {
+        public static void onClick(InputEvent.MouseButton.Pre event) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.screen != null) return;
             if (event.getButton() != 0 || event.getAction() != 1) return;
@@ -87,18 +89,23 @@ public class ClientEvents {
             int y = 6;
 
             if (inBox(gx, gy, x, y, BTN_W, BTN_H)) {
+                event.setCanceled(true);
                 Config.ENABLED.set(!Config.ENABLED.get());
                 Config.SPEC.save();
+                if (!mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
                 return;
             }
             int y2 = y + BTN_H + PAD;
             if (inBox(gx, gy, x, y2, BTN_W, BTN_H)) {
+                event.setCanceled(true);
                 mc.setScreen(new VeinScreen());
                 return;
             }
             int y3 = y2 + BTN_H + PAD;
             if (inBox(gx, gy, x, y3, BTN_W, BTN_H)) {
+                event.setCanceled(true);
                 addLookedAtBlock();
+                if (!mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
             }
         }
     }
