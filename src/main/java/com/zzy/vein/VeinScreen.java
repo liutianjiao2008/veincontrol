@@ -3,6 +3,9 @@ package com.zzy.vein;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -47,6 +50,19 @@ public class VeinScreen extends Screen {
             Component.literal("关闭"),
             b -> this.onClose()
         ).bounds(cx - 50, this.height - 30, 100, 20).build());
+    }
+
+    public static String displayName(String id) {
+        try {
+            ResourceLocation rl = new ResourceLocation(id);
+            if (!BuiltInRegistries.BLOCK.containsKey(rl)) return id + " §c(未注册)";
+            Block b = BuiltInRegistries.BLOCK.get(rl);
+            String cn = b.getName().getString();
+            if (cn == null || cn.isEmpty()) return id;
+            return cn + " §8" + id;
+        } catch (Exception e) {
+            return id;
+        }
     }
 
     private void rebuild() {
@@ -98,7 +114,7 @@ public class VeinScreen extends Screen {
             int rowY = y0 + i * 12;
             boolean hover = mouseX >= x && mouseX <= x + 300 && mouseY >= rowY - 1 && mouseY <= rowY + 10;
             if (hover) gfx.fill(x - 2, rowY - 1, x + 302, rowY + 10, 0x40FF0000);
-            gfx.drawString(this.font, "· " + list.get(idx), x, rowY, hover ? 0xFF6666 : 0xDDDDDD, false);
+            gfx.drawString(this.font, "· " + displayName(list.get(idx)), x, rowY, hover ? 0xFF6666 : 0xDDDDDD, false);
         }
         super.render(gfx, mouseX, mouseY, partialTick);
     }
