@@ -124,12 +124,12 @@ public class ClientEvents {
         List<String> list = new ArrayList<>();
         for (String s : Config.BLOCKS.get()) list.add(s);
         if (list.contains(id)) {
-            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§e已经存在: " + id), true);
+            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§e已经存在: " + VeinScreen.displayName(id)), true);
             return;
         }
         list.add(id);
         Config.BLOCKS.set(list);
         Config.SPEC.save();
-        if (mc.player != null) mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§a已添加: " + id), true);
+        if (mc.player != null) mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§a已添加: " + VeinScreen.displayName(id)), true);
     }
 }
