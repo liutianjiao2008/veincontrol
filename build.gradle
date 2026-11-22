@@ -1,0 +1,27 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+version = '1.0.0'
+group = 'com.zzy.vein'
+base { archivesName = 'veincontrol' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+}
+repositories {
+    maven { url = 'https://maven.minecraftforge.net/' }
+}
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+}
+jar {
+    manifest {
+        attributes([
+            "Specification-Title": "veincontrol",
+            "Implementation-Title": "veincontrol",
+            "Implementation-Version": project.version
+        ])
+    }
+}
