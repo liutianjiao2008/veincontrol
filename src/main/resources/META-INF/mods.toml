@@ -4,5 +4,5 @@ license="MIT"
 [[mods]]
 modId="veincontrol"
 version="1.0.0"
-displayName="Vein Control"
-description="HUD toggle + configurable vein mining"
+displayName="连锁控制"
+description="HUD 开关 + 可自定义的连锁采集"
