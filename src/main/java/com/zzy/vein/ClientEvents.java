@@ -37,17 +37,17 @@ public class ClientEvents {
             // toggle button
             boolean on = Config.ENABLED.get();
             gfx.fill(x, y, x + BTN_W, y + BTN_H, on ? 0xC0208020 : 0xC0802020);
-            gfx.drawString(font, on ? "\u94fe\u9501: \u5f00" : "\u94fe\u9501: \u5173", x + 6, y + 5, 0xFFFFFF, false);
+            gfx.drawString(font, on ? "连锁: 开" : "连锁: 关", x + 6, y + 5, 0xFFFFFF, false);
 
             // settings button
             int y2 = y + BTN_H + PAD;
             gfx.fill(x, y2, x + BTN_W, y2 + BTN_H, 0xC0303030);
-            gfx.drawString(font, "\u8bbe\u7f6e", x + 20, y2 + 5, 0xFFFFFF, false);
+            gfx.drawString(font, "设置", x + 20, y2 + 5, 0xFFFFFF, false);
 
             // add-target button
             int y3 = y2 + BTN_H + PAD;
             gfx.fill(x, y3, x + BTN_W, y3 + BTN_H, 0xC0303030);
-            gfx.drawString(font, "\u6dfb\u52a0", x + 20, y3 + 5, 0xFFFFFF, false);
+            gfx.drawString(font, "添加", x + 20, y3 + 5, 0xFFFFFF, false);
         });
     }
 
@@ -112,17 +112,24 @@ public class ClientEvents {
 
     public static void addLookedAtBlock() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.BLOCK) return;
+        if (mc.player == null) return;
+        if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.BLOCK) {
+            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§c请先用准心对准一个方块"), true);
+            return;
+        }
         BlockHitResult bhr = (BlockHitResult) mc.hitResult;
         BlockPos pos = bhr.getBlockPos();
         if (mc.level == null) return;
         String id = BuiltInRegistries.BLOCK.getKey(mc.level.getBlockState(pos).getBlock()).toString();
         List<String> list = new ArrayList<>();
         for (String s : Config.BLOCKS.get()) list.add(s);
-        if (list.contains(id)) return;
+        if (list.contains(id)) {
+            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§e已经存在: " + id), true);
+            return;
+        }
         list.add(id);
         Config.BLOCKS.set(list);
         Config.SPEC.save();
-        if (mc.player != null) mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u5df2\u6dfb\u52a0: " + id), true);
+        if (mc.player != null) mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§a已添加: " + id), true);
     }
 }
