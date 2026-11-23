@@ -8,6 +8,10 @@ import net.minecraft.world.Containers;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -107,6 +111,15 @@ public class VeinHandler {
         } else {
             Block.dropResources(state, level, pos, level.getBlockEntity(pos), player, tool);
             level.removeBlock(pos, false);
+        }
+
+        // 连锁经验：按方块自身的经验公式计算
+        int fortune = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.BLOCK_FORTUNE, tool);
+        int silk = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.SILK_TOUCH, tool);
+        int exp = state.getExpDrop(level, level.random, pos, fortune, silk);
+        if (exp > 0) {
+            BlockPos target = Config.DROPS_AT_PLAYER.get() ? player.blockPosition() : pos;
+            ExperienceOrb.award(level, Vec3.atCenterOf(target), exp);
         }
 
         if (Config.CONSUME_DURABILITY.get() && !tool.isEmpty() && tool.isDamageableItem()) {
