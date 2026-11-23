@@ -1,6 +1,5 @@
 package com.zzy.vein;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -9,11 +8,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
-import org.lwjgl.glfw.GLFW;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +20,15 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = VeinControl.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ClientEvents {
 
-    public static final int BTN_W = 66;
+    public static final int BTN_W = 72;
     public static final int BTN_H = 18;
     public static final int PAD = 4;
+
+    // 强调色
+    private static final int C_ON    = 0xFF3DD68C;
+    private static final int C_OFF   = 0xFFE5484D;
+    private static final int C_SET   = 0xFF4A90D9;
+    private static final int C_ADD   = 0xFFE5A50A;
 
     @SubscribeEvent
     public static void registerOverlay(RegisterGuiOverlaysEvent event) {
@@ -33,26 +38,46 @@ public class ClientEvents {
             Font font = mc.font;
             int x = width - BTN_W - 6;
             int y = 6;
-
-            // toggle button
+            double[] mp = mouseGui(mc);
             boolean on = Config.ENABLED.get();
-            gfx.fill(x, y, x + BTN_W, y + BTN_H, on ? 0xC0208020 : 0xC0802020);
-            gfx.drawString(font, on ? "连锁: 开" : "连锁: 关", x + 6, y + 5, 0xFFFFFF, false);
 
-            // settings button
+            drawBtn(gfx, font, x, y, on ? "连锁 · 开" : "连锁 · 关", on ? C_ON : C_OFF, hit(mp, x, y));
+
             int y2 = y + BTN_H + PAD;
-            gfx.fill(x, y2, x + BTN_W, y2 + BTN_H, 0xC0303030);
-            gfx.drawString(font, "设置", x + 20, y2 + 5, 0xFFFFFF, false);
+            drawBtn(gfx, font, x, y2, "设置", C_SET, hit(mp, x, y2));
 
-            // add-target button
             int y3 = y2 + BTN_H + PAD;
-            gfx.fill(x, y3, x + BTN_W, y3 + BTN_H, 0xC0303030);
-            gfx.drawString(font, "添加", x + 20, y3 + 5, 0xFFFFFF, false);
+            drawBtn(gfx, font, x, y3, "添加", C_ADD, hit(mp, x, y3));
         });
     }
 
-    private static boolean inBox(double mx, double my, int x, int y, int w, int h) {
-        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    private static void drawBtn(GuiGraphics gfx, Font font, int x, int y, String label, int accent, boolean hover) {
+        // 投影
+        gfx.fill(x + 1, y + 2, x + BTN_W + 1, y + BTN_H + 2, 0x60000000);
+        // 底
+        gfx.fill(x, y, x + BTN_W, y + BTN_H, hover ? 0xF0353535 : 0xD01A1A1A);
+        // 左侧强调条
+        gfx.fill(x, y, x + 3, y + BTN_H, accent);
+        // 高光边 / 暗边
+        gfx.fill(x, y, x + BTN_W, y + 1, hover ? 0xFFB0B0B0 : 0xFF707070);
+        gfx.fill(x, y + BTN_H - 1, x + BTN_W, y + BTN_H, 0xFF0A0A0A);
+        // 文字居中
+        int tw = font.width(label);
+        gfx.drawString(font, label, x + 3 + (BTN_W - 3 - tw) / 2, y + (BTN_H - 8) / 2,
+                hover ? 0xFFFFFF : 0xE0E0E0, false);
+    }
+
+    private static double[] mouseGui(Minecraft mc) {
+        double sw = mc.getWindow().getScreenWidth();
+        double sh = mc.getWindow().getScreenHeight();
+        return new double[]{
+                mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / sw,
+                mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / sh
+        };
+    }
+
+    private static boolean hit(double[] mp, int x, int y) {
+        return mp[0] >= x && mp[0] <= x + BTN_W && mp[1] >= y && mp[1] <= y + BTN_H;
     }
 
     @Mod.EventBusSubscriber(modid = VeinControl.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -62,16 +87,13 @@ public class ClientEvents {
         public static void onKey(InputEvent.Key event) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null || mc.screen != null) return;
-            // 只响应按下（toggle），不响应松开，避免点按钮时被立刻锁回去
             if (event.getAction() != GLFW.GLFW_PRESS) return;
             if (event.getKey() == GLFW.GLFW_KEY_LEFT_ALT) {
-                if (mc.mouseHandler.isMouseGrabbed()) {
-                    mc.mouseHandler.releaseMouse();
-                } else {
-                    mc.mouseHandler.grabMouse();
-                }
+                if (mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
+                else mc.mouseHandler.grabMouse();
             }
         }
+
         @SubscribeEvent
         public static void onClick(InputEvent.MouseButton.Pre event) {
             Minecraft mc = Minecraft.getInstance();
@@ -79,30 +101,24 @@ public class ClientEvents {
             if (event.getButton() != 0 || event.getAction() != 1) return;
             if (mc.getWindow() == null) return;
 
-            double sw = mc.getWindow().getScreenWidth();
-            double sh = mc.getWindow().getScreenHeight();
-            double gx = mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / sw;
-            double gy = mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / sh;
-
-            int width = mc.getWindow().getGuiScaledWidth();
-            int x = width - BTN_W - 6;
+            double[] mp = mouseGui(mc);
+            int x = mc.getWindow().getGuiScaledWidth() - BTN_W - 6;
             int y = 6;
 
-            if (inBox(gx, gy, x, y, BTN_W, BTN_H)) {
+            if (hit(mp, x, y)) {
                 event.setCanceled(true);
-                Config.ENABLED.set(!Config.ENABLED.get());
-                Config.SPEC.save();
+                try { Config.ENABLED.set(!Config.ENABLED.get()); Config.SPEC.save(); } catch (Exception ignored) {}
                 if (!mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
                 return;
             }
             int y2 = y + BTN_H + PAD;
-            if (inBox(gx, gy, x, y2, BTN_W, BTN_H)) {
+            if (hit(mp, x, y2)) {
                 event.setCanceled(true);
                 mc.setScreen(new VeinScreen());
                 return;
             }
             int y3 = y2 + BTN_H + PAD;
-            if (inBox(gx, gy, x, y3, BTN_W, BTN_H)) {
+            if (hit(mp, x, y3)) {
                 event.setCanceled(true);
                 addLookedAtBlock();
                 if (!mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
@@ -114,7 +130,7 @@ public class ClientEvents {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.BLOCK) {
-            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§c请先用准心对准一个方块"), true);
+            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00a7c\u8bf7\u5148\u7528\u51c6\u5fc3\u5bf9\u51c6\u4e00\u4e2a\u65b9\u5757"), true);
             return;
         }
         BlockHitResult bhr = (BlockHitResult) mc.hitResult;
@@ -124,12 +140,11 @@ public class ClientEvents {
         List<String> list = new ArrayList<>();
         for (String s : Config.BLOCKS.get()) list.add(s);
         if (list.contains(id)) {
-            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§e已经存在: " + VeinScreen.displayName(id)), true);
+            mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00a7e\u5df2\u5b58\u5728: " + VeinScreen.displayName(id)), true);
             return;
         }
         list.add(id);
-        Config.BLOCKS.set(list);
-        Config.SPEC.save();
-        if (mc.player != null) mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§a已添加: " + VeinScreen.displayName(id)), true);
+        try { Config.BLOCKS.set(list); Config.SPEC.save(); } catch (Exception ignored) {}
+        mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00a7a\u5df2\u6dfb\u52a0: " + VeinScreen.displayName(id)), true);
     }
 }
