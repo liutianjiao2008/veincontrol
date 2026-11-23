@@ -50,7 +50,7 @@ public class VeinScreen extends Screen {
 
         wBox = makeBox(cx - 128, sy, Config.WIDTH.get(), "宽");
         hBox = makeBox(cx - 52, sy, Config.HEIGHT.get(), "高");
-        dBox = makeBox(cx + 24, sy, Config.DEPTH.get(), "深");
+        dBox = makeBox(cx + 24, sy, Config.DEPTH.get(), "长");
 
         this.addRenderableWidget(Button.builder(Component.literal("应用"), b -> applyBoxes())
                 .bounds(cx + 66, sy, 50, 20).build());
@@ -152,7 +152,7 @@ public class VeinScreen extends Screen {
                 this.width / 2 - 150, 32, 0xAAAAAA, false);
 
         String shape = (Config.WIDTH.get() > 1 || Config.HEIGHT.get() > 1 || Config.DEPTH.get() > 1)
-                ? "形状 " + Config.WIDTH.get() + "x" + Config.HEIGHT.get() + "x" + Config.DEPTH.get()
+                ? "宽" + Config.WIDTH.get() + " 高" + Config.HEIGHT.get() + " 长" + Config.DEPTH.get() + "（按朝向）"
                 : "连通模式";
         gfx.drawString(this.font, shape, this.width / 2 + 20, 32, 0x66CCFF, false);
 
@@ -172,7 +172,7 @@ public class VeinScreen extends Screen {
         int sy = this.height - 84;
         gfx.drawString(this.font, "宽", this.width / 2 - 150, sy + 5, 0xAAAAAA, false);
         gfx.drawString(this.font, "高", this.width / 2 - 74, sy + 5, 0xAAAAAA, false);
-        gfx.drawString(this.font, "深", this.width / 2 + 2, sy + 5, 0xAAAAAA, false);
+        gfx.drawString(this.font, "长", this.width / 2 + 2, sy + 5, 0xAAAAAA, false);
 
         super.render(gfx, mouseX, mouseY, partialTick);
     }
