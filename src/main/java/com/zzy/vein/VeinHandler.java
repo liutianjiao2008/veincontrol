@@ -4,12 +4,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.Containers;
 import net.minecraft.world.item.ItemStack;
-import java.util.List;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -19,44 +17,46 @@ import java.util.List;
 import java.util.Set;
 
 public class VeinHandler {
+
     @SubscribeEvent
     public void onBreak(BlockEvent.BreakEvent event) {
         if (!Config.ENABLED.get()) return;
         if (!(event.getLevel() instanceof ServerLevel level)) return;
 
+        var player = event.getPlayer();
         BlockPos origin = event.getPos();
         BlockState originState = level.getBlockState(origin);
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(originState.getBlock());
-        List<? extends String> allowed = Config.BLOCKS.get();
-        if (!allowed.contains(id.toString())) return;
+        if (!Config.BLOCKS.get().contains(id.toString())) return;
 
         int limit = Config.MAX_BLOCKS.get();
-        int w = Config.WIDTH.get(), hh2 = Config.HEIGHT.get(), dp = Config.DEPTH.get();
+        int w = Config.WIDTH.get(), hh = Config.HEIGHT.get(), dp = Config.DEPTH.get();
 
-        // 立方体模式：长/宽/高 任一大于 1 时生效
-        if (w > 1 || hh2 > 1 || dp > 1) {
-            int hw = (w - 1) / 2, hh = (hh2 - 1) / 2, hd = (dp - 1) / 2;
+        if (w > 1 || hh > 1 || dp > 1) {
+            int rw = (w - 1) / 2, rh = (hh - 1) / 2, rd = (dp - 1) / 2;
             int done = 0;
-            for (int dx = -hw; dx <= hw && done < limit; dx++) {
-                for (int dy = -hh; dy <= hh && done < limit; dy++) {
-                    for (int dz = -hd; dz <= hd && done < limit; dz++) {
+            for (int dx = -rw; dx <= rw && done < limit; dx++) {
+                for (int dy = -rh; dy <= rh && done < limit; dy++) {
+                    for (int dz = -rd; dz <= rd && done < limit; dz++) {
                         if (dx == 0 && dy == 0 && dz == 0) continue;
                         BlockPos n = origin.offset(dx, dy, dz);
                         BlockState ns = level.getBlockState(n);
                         if (ns.getBlock() != originState.getBlock()) continue;
-                        breakAndDrop(level, n, ns, event);
+                        if (!canBreak(level, n, ns)) continue;
+                        breakAndDrop(level, n, ns, player);
                         done++;
                     }
                 }
             }
             return;
         }
+
         Set<BlockPos> visited = new HashSet<>();
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         queue.add(origin);
         visited.add(origin);
-
         int broken = 0;
+
         while (!queue.isEmpty() && broken < limit) {
             BlockPos p = queue.poll();
             for (int dx = -1; dx <= 1; dx++) {
@@ -67,8 +67,8 @@ public class VeinHandler {
                         if (!visited.add(n)) continue;
                         BlockState ns = level.getBlockState(n);
                         if (ns.getBlock() != originState.getBlock()) continue;
-                        if (n.equals(origin)) continue;
-                        breakAndDrop(level, n, ns, event);
+                        if (!canBreak(level, n, ns)) continue;
+                        breakAndDrop(level, n, ns, player);
                         queue.add(n);
                         broken++;
                         if (broken >= limit) break;
@@ -80,19 +80,37 @@ public class VeinHandler {
         }
     }
 
-    private static void breakAndDrop(ServerLevel level, BlockPos n, BlockState ns, BlockEvent.BreakEvent event) {
+    /** 不可破坏方块（基岩等 hardness = -1）直接跳过 */
+    private static boolean canBreak(ServerLevel level, BlockPos pos, BlockState state) {
+        if (state.getDestroySpeed(level, pos) < 0) return false;
+        return !state.isAir();
+    }
+
+    private static void breakAndDrop(ServerLevel level, BlockPos pos, BlockState state, net.minecraft.world.entity.player.Player player) {
+        boolean creative = player.isCreative();
+        var tool = player.getMainHandItem();
+
+        if (creative) {
+            level.removeBlock(pos, false);
+            return;
+        }
+
         if (Config.DROPS_AT_PLAYER.get()) {
-            List<ItemStack> drops = Block.getDrops(ns, level, n, level.getBlockEntity(n),
-                    event.getPlayer(), event.getPlayer().getMainHandItem());
-            level.removeBlock(n, false);
-            BlockPos pp = event.getPlayer().blockPosition();
+            List<ItemStack> drops = Block.getDrops(state, level, pos, level.getBlockEntity(pos), player, tool);
+            level.removeBlock(pos, false);
+            BlockPos pp = player.blockPosition();
             for (ItemStack st : drops) {
                 double ox = (level.random.nextDouble() - 0.5) * 0.8;
                 double oz = (level.random.nextDouble() - 0.5) * 0.8;
                 Containers.dropItemStack(level, pp.getX() + 0.5 + ox, pp.getY() + 0.6, pp.getZ() + 0.5 + oz, st);
             }
         } else {
-            level.destroyBlock(n, true, event.getPlayer());
+            Block.dropResources(state, level, pos, level.getBlockEntity(pos), player, tool);
+            level.removeBlock(pos, false);
+        }
+
+        if (Config.CONSUME_DURABILITY.get() && !tool.isEmpty() && tool.isDamageableItem()) {
+            tool.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(net.minecraft.world.InteractionHand.MAIN_HAND));
         }
     }
 }
