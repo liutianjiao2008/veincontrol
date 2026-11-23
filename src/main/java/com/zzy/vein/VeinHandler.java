@@ -61,11 +61,10 @@ public class VeinHandler {
             // 仰视（pitch < -30°）→ 高度向上；否则向下
             boolean lookUp = player.getXRot() < -30.0F;
             outer:
-            for (int dl = 0; dl < dp; dl++) {
-                for (int i = 0; i < hh; i++) {
+            for (int dl = 1; dl <= dp; dl++) {
+                for (int i = 1; i <= hh; i++) {
                     int dy = lookUp ? i : -i;
                     for (int dw = -hw; dw <= hw; dw++) {
-                        if (dl == 0 && dy == 0 && dw == 0) continue;
                         if (done >= limit) break outer;
                         int dx = fx * dl + rx * dw;
                         int dz = fz * dl + rz * dw;
