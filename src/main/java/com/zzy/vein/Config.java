@@ -20,7 +20,7 @@ public class Config {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         b.comment("Vein mining settings").push("vein");
         ENABLED = b.comment("Master switch").define("enabled", true);
-        MAX_BLOCKS = b.comment("Max blocks per vein").defineInRange("maxBlocks", 128, 1, 1000);
+        MAX_BLOCKS = b.comment("Max blocks per vein").defineInRange("maxBlocks", 1024, 1, 20000);
         DROPS_AT_PLAYER = b.comment("掉落物直接落在玩家脚下").define("dropsAtPlayer", true);
         CONSUME_DURABILITY = b.comment("连锁是否消耗工具耐久").define("consumeDurability", true);
         WIDTH = b.comment("连锁宽度(1=不限制)").defineInRange("width", 3, 1, 32);
