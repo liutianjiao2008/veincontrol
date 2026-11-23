@@ -1,6 +1,7 @@
 package com.zzy.vein;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -37,12 +38,19 @@ public class VeinHandler {
         int w = Config.WIDTH.get(), hh = Config.HEIGHT.get(), dp = Config.DEPTH.get();
 
         if (w > 1 || hh > 1 || dp > 1) {
-            int rw = (w - 1) / 2, rh = (hh - 1) / 2, rd = (dp - 1) / 2;
+            // 宽 = 左右，高 = 上下，长(配置里的 depth) = 玩家视线方向
+            Direction facing = player.getDirection();
+            int fx = facing.getStepX(), fz = facing.getStepZ();   // 前
+            int rx = -fz, rz = fx;                                 // 右
+
+            int hw = (w - 1) / 2, hh2 = (hh - 1) / 2, hl = (dp - 1) / 2;
             int done = 0;
-            for (int dx = -rw; dx <= rw && done < limit; dx++) {
-                for (int dy = -rh; dy <= rh && done < limit; dy++) {
-                    for (int dz = -rd; dz <= rd && done < limit; dz++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue;
+            for (int dl = -hl; dl <= hl && done < limit; dl++) {   // 沿视线
+                for (int dy = -hh2; dy <= hh2 && done < limit; dy++) {  // 上下
+                    for (int dw = -hw; dw <= hw && done < limit; dw++) { // 左右
+                        if (dl == 0 && dy == 0 && dw == 0) continue;
+                        int dx = fx * dl + rx * dw;
+                        int dz = fz * dl + rz * dw;
                         BlockPos n = origin.offset(dx, dy, dz);
                         BlockState ns = level.getBlockState(n);
                         if (ns.getBlock() != originState.getBlock()) continue;
