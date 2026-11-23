@@ -5,6 +5,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.Containers;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.player.Player;
@@ -76,6 +78,7 @@ public class VeinHandler {
                     }
                 }
             }
+            notifyCount(player, done);
             return;
         }
 
@@ -109,6 +112,14 @@ public class VeinHandler {
                         if (level.getBlockState(n).getBlock() == originState.getBlock()) queue.add(n);
                     }
         }
+        notifyCount(player, broken);
+    }
+
+    /** 在物品栏上方(actionbar)显示本次连锁数量 */
+    private static void notifyCount(Player player, int count) {
+        if (count <= 0) return;
+        if (!(player instanceof ServerPlayer sp)) return;
+        sp.displayClientMessage(Component.literal("\u00a7a\u94fe\u9501 \u00a7e" + count + " \u00a7a\u4e2a\u65b9\u5757"), true);
     }
 
     private static boolean canBreak(ServerLevel level, BlockPos pos, BlockState state) {
