@@ -14,6 +14,7 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.Tags;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -23,6 +24,15 @@ import java.util.List;
 import java.util.Set;
 
 public class VeinHandler {
+
+    /** 矿石：Forge ORES 标签，或 id 以 _ore 结尾 */
+    private static boolean isOre(BlockState state, ResourceLocation id) {
+        try {
+            if (state.is(Tags.Blocks.ORES)) return true;
+        } catch (Exception ignored) {}
+        String p = id.getPath();
+        return p.endsWith("_ore") || p.startsWith("ore_");
+    }
 
     @SubscribeEvent
     public void onBreak(BlockEvent.BreakEvent event) {
@@ -37,42 +47,47 @@ public class VeinHandler {
 
         int limit = Config.MAX_BLOCKS.get();
         int w = Config.WIDTH.get(), hh = Config.HEIGHT.get(), dp = Config.DEPTH.get();
+        boolean ore = isOre(originState, id);
 
-        // 1. 先按长宽高收集“起始方块”（种子）
-        Set<BlockPos> visited = new HashSet<>();
-        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-        visited.add(origin);
-
-        if (w > 1 || hh > 1 || dp > 1) {
+        // 普通方块 + 设置了长宽高 → 严格按盒子挖，不外扩
+        if (!ore && (w > 1 || hh > 1 || dp > 1)) {
             Direction facing = player.getDirection();
             int fx = facing.getStepX(), fz = facing.getStepZ();
             int rx = -fz, rz = fx;
             int hw = (w - 1) / 2;
+            int done = 0;
+            outer:
             for (int dl = 0; dl < dp; dl++) {
                 for (int dy = 0; dy > -hh; dy--) {
                     for (int dw = -hw; dw <= hw; dw++) {
                         if (dl == 0 && dy == 0 && dw == 0) continue;
+                        if (done >= limit) break outer;
                         int dx = fx * dl + rx * dw;
                         int dz = fz * dl + rz * dw;
                         BlockPos n = origin.offset(dx, dy, dz);
                         BlockState ns = level.getBlockState(n);
                         if (ns.getBlock() != originState.getBlock()) continue;
-                        if (visited.add(n)) queue.add(n);
+                        if (!canBreak(level, n, ns)) continue;
+                        breakAndDrop(level, n, ns, player);
+                        done++;
                     }
                 }
             }
-        } else {
-            // 纯连通模式：从原点周围开始
-            for (int dx = -1; dx <= 1; dx++)
-                for (int dy = -1; dy <= 1; dy++)
-                    for (int dz = -1; dz <= 1; dz++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue;
-                        BlockPos n = origin.offset(dx, dy, dz);
-                        if (level.getBlockState(n).getBlock() == originState.getBlock() && visited.add(n)) queue.add(n);
-                    }
+            return;
         }
 
-        // 2. 从所有种子出发做连通扩展（不再受形状盒子限制）
+        // 矿石（或未设长宽高）→ 纯连通扩展，无限挖通整片
+        Set<BlockPos> visited = new HashSet<>();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        visited.add(origin);
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    BlockPos n = origin.offset(dx, dy, dz);
+                    if (level.getBlockState(n).getBlock() == originState.getBlock() && visited.add(n)) queue.add(n);
+                }
+
         int broken = 0;
         while (!queue.isEmpty() && broken < limit) {
             BlockPos p = queue.poll();
