@@ -49,8 +49,8 @@ public class VeinHandler {
         int w = Config.WIDTH.get(), hh = Config.HEIGHT.get(), dp = Config.DEPTH.get();
         boolean ore = isOre(originState, id);
 
-        // 普通方块 + 设置了长宽高 → 严格按盒子挖，不外扩
-        if (!ore && (w > 1 || hh > 1 || dp > 1)) {
+        // 普通方块 → 永远按形状盒子挖（1x1x1 等于只挖自己一块，绝不连通扩展）
+        if (!ore) {
             Direction facing = player.getDirection();
             int fx = facing.getStepX(), fz = facing.getStepZ();
             int rx = -fz, rz = fx;
