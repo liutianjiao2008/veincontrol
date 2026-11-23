@@ -38,17 +38,19 @@ public class VeinHandler {
         int w = Config.WIDTH.get(), hh = Config.HEIGHT.get(), dp = Config.DEPTH.get();
 
         if (w > 1 || hh > 1 || dp > 1) {
-            // 宽 = 左右，高 = 上下，长(配置里的 depth) = 玩家视线方向
+            // 宽 = 左右居中；高 = 从挖掘点向下；长 = 沿视线向前
             Direction facing = player.getDirection();
-            int fx = facing.getStepX(), fz = facing.getStepZ();   // 前
-            int rx = -fz, rz = fx;                                 // 右
+            int fx = facing.getStepX(), fz = facing.getStepZ();
+            int rx = -fz, rz = fx;
 
-            int hw = (w - 1) / 2, hh2 = (hh - 1) / 2, hl = (dp - 1) / 2;
+            int hw = (w - 1) / 2;
             int done = 0;
-            for (int dl = -hl; dl <= hl && done < limit; dl++) {   // 沿视线
-                for (int dy = -hh2; dy <= hh2 && done < limit; dy++) {  // 上下
-                    for (int dw = -hw; dw <= hw && done < limit; dw++) { // 左右
+            outer:
+            for (int dl = 0; dl < dp; dl++) {          // 向前 dp 格
+                for (int dy = 0; dy > -hh; dy--) {     // 向下 hh 格
+                    for (int dw = -hw; dw <= hw; dw++) { // 左右居中
                         if (dl == 0 && dy == 0 && dw == 0) continue;
+                        if (done >= limit) break outer;
                         int dx = fx * dl + rx * dw;
                         int dz = fz * dl + rz * dw;
                         BlockPos n = origin.offset(dx, dy, dz);
