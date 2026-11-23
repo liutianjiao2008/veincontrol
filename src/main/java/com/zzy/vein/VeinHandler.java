@@ -6,13 +6,14 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.entity.ExperienceOrb;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -28,7 +29,7 @@ public class VeinHandler {
         if (!Config.ENABLED.get()) return;
         if (!(event.getLevel() instanceof ServerLevel level)) return;
 
-        var player = event.getPlayer();
+        Player player = event.getPlayer();
         BlockPos origin = event.getPos();
         BlockState originState = level.getBlockState(origin);
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(originState.getBlock());
@@ -37,72 +38,69 @@ public class VeinHandler {
         int limit = Config.MAX_BLOCKS.get();
         int w = Config.WIDTH.get(), hh = Config.HEIGHT.get(), dp = Config.DEPTH.get();
 
+        // 1. 先按长宽高收集“起始方块”（种子）
+        Set<BlockPos> visited = new HashSet<>();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        visited.add(origin);
+
         if (w > 1 || hh > 1 || dp > 1) {
-            // 宽 = 左右居中；高 = 从挖掘点向下；长 = 沿视线向前
             Direction facing = player.getDirection();
             int fx = facing.getStepX(), fz = facing.getStepZ();
             int rx = -fz, rz = fx;
-
             int hw = (w - 1) / 2;
-            int done = 0;
-            outer:
-            for (int dl = 0; dl < dp; dl++) {          // 向前 dp 格
-                for (int dy = 0; dy > -hh; dy--) {     // 向下 hh 格
-                    for (int dw = -hw; dw <= hw; dw++) { // 左右居中
+            for (int dl = 0; dl < dp; dl++) {
+                for (int dy = 0; dy > -hh; dy--) {
+                    for (int dw = -hw; dw <= hw; dw++) {
                         if (dl == 0 && dy == 0 && dw == 0) continue;
-                        if (done >= limit) break outer;
                         int dx = fx * dl + rx * dw;
                         int dz = fz * dl + rz * dw;
                         BlockPos n = origin.offset(dx, dy, dz);
                         BlockState ns = level.getBlockState(n);
                         if (ns.getBlock() != originState.getBlock()) continue;
-                        if (!canBreak(level, n, ns)) continue;
-                        breakAndDrop(level, n, ns, player);
-                        done++;
+                        if (visited.add(n)) queue.add(n);
                     }
                 }
             }
-            return;
+        } else {
+            // 纯连通模式：从原点周围开始
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (dx == 0 && dy == 0 && dz == 0) continue;
+                        BlockPos n = origin.offset(dx, dy, dz);
+                        if (level.getBlockState(n).getBlock() == originState.getBlock() && visited.add(n)) queue.add(n);
+                    }
         }
 
-        Set<BlockPos> visited = new HashSet<>();
-        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-        queue.add(origin);
-        visited.add(origin);
+        // 2. 从所有种子出发做连通扩展（不再受形状盒子限制）
         int broken = 0;
-
         while (!queue.isEmpty() && broken < limit) {
             BlockPos p = queue.poll();
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
+            BlockState ns = level.getBlockState(p);
+            if (ns.getBlock() != originState.getBlock()) continue;
+            if (!canBreak(level, p, ns)) continue;
+            breakAndDrop(level, p, ns, player);
+            broken++;
+
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
                     for (int dz = -1; dz <= 1; dz++) {
                         if (dx == 0 && dy == 0 && dz == 0) continue;
                         BlockPos n = p.offset(dx, dy, dz);
                         if (!visited.add(n)) continue;
-                        BlockState ns = level.getBlockState(n);
-                        if (ns.getBlock() != originState.getBlock()) continue;
-                        if (!canBreak(level, n, ns)) continue;
-                        breakAndDrop(level, n, ns, player);
-                        queue.add(n);
-                        broken++;
-                        if (broken >= limit) break;
+                        if (level.getBlockState(n).getBlock() == originState.getBlock()) queue.add(n);
                     }
-                    if (broken >= limit) break;
-                }
-                if (broken >= limit) break;
-            }
         }
     }
 
-    /** 不可破坏方块（基岩等 hardness = -1）直接跳过 */
     private static boolean canBreak(ServerLevel level, BlockPos pos, BlockState state) {
-        if (state.getDestroySpeed(level, pos) < 0) return false;
-        return !state.isAir();
+        if (state.isAir()) return false;
+        return state.getDestroySpeed(level, pos) >= 0;
     }
 
-    private static void breakAndDrop(ServerLevel level, BlockPos pos, BlockState state, net.minecraft.world.entity.player.Player player) {
+    private static void breakAndDrop(ServerLevel level, BlockPos pos, BlockState state, Player player) {
         boolean creative = player.isCreative();
-        var tool = player.getMainHandItem();
+        ItemStack tool = player.getMainHandItem();
 
         if (creative) {
             level.removeBlock(pos, false);
@@ -123,7 +121,6 @@ public class VeinHandler {
             level.removeBlock(pos, false);
         }
 
-        // 连锁经验：按方块自身的经验公式计算
         int fortune = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.BLOCK_FORTUNE, tool);
         int silk = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.SILK_TOUCH, tool);
         int exp = state.getExpDrop(level, level.random, pos, fortune, silk);
